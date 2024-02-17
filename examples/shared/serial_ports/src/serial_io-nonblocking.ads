@@ -92,11 +92,11 @@ private
       IRQ          : Interrupt_ID;
       IRQ_Priority : Interrupt_Priority)
    --  with
-   --     Interrupt_Priority => IRQ_Priority
+      --  Interrupt_Priority => IRQ_Priority
    is
 
       pragma Interrupt_Priority (IRQ_Priority);
-      --  use pragma as workaround for bug in CE_2021 frontend (V523-041)
+      --  use pragma as workaround for bug in GNAT frontend (V523-041)
 
       procedure Start_Sending (Msg : not null access Message);
 

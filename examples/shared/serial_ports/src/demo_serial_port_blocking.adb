@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
 --                                                                          --
---                    Copyright (C) 2015-2022, AdaCore                      --
+--                    Copyright (C) 2015-2025, AdaCore                      --
 --                                                                          --
 --  Redistribution and use in source and binary forms, with or without      --
 --  modification, are permitted provided that the following conditions are  --
@@ -37,11 +37,9 @@ with Last_Chance_Handler;  pragma Unreferenced (Last_Chance_Handler);
 --  an exception is propagated. We need it in the executable, therefore it
 --  must be somewhere in the closure of the context clauses.
 
-with Peripherals_Blocking;  use Peripherals_Blocking;
+with Peripherals_Blocking;  use Peripherals_Blocking; -- for COM
 with Serial_IO.Blocking;    use Serial_IO.Blocking;
 with Message_Buffers;       use Message_Buffers;
-
-use Serial_IO;
 
 procedure Demo_Serial_Port_Blocking is
 
@@ -53,18 +51,27 @@ procedure Demo_Serial_Port_Blocking is
    procedure Send (This : String) is
    begin
       Set (Outgoing, To => This);
-      Blocking.Send (COM, Outgoing'Unchecked_Access);
+      Send (COM, Outgoing'Unchecked_Access);
       --  Send won't return until the entire message has been sent
    end Send;
 
 begin
-   Initialize_Hardware (COM);
-   Configure (COM, Baud_Rate => 115_200);
+   Serial_IO.Initialize_Hardware (Peripheral);
+   Serial_IO.Configure (COM.Device, Baud_Rate => 115_200);
+   --  This baud rate selection is entirely arbitrary. Note that you may have
+   --  to alter the settings of your host serial port to match this baud rate,
+   --  or just change the above to match whatever the host serial port has set
+   --  already. An application such as TerraTerm or RealTerm is helpful.
 
    Incoming.Set_Terminator (To => ASCII.CR);
    Send ("Enter text, terminated by CR.");
+   --  Note that you may have to alter the settings on your host serial port
+   --  so that the terminator char is not stripped off automatically by the
+   --  host driver, which may happen especially when CR is the terminator.
+   --  An application such as TerraTerm or RealTerm is helpful.
+
    loop
-      Blocking.Receive (COM, Incoming'Unchecked_Access);
+      Receive (COM, Incoming'Unchecked_Access);
       Send ("Received : " & Incoming.Content);
    end loop;
 end Demo_Serial_Port_Blocking;

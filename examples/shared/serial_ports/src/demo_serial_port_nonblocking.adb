@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
 --                                                                          --
---                    Copyright (C) 2015-2022, AdaCore                      --
+--                    Copyright (C) 2015-2025, AdaCore                      --
 --                                                                          --
 --  Redistribution and use in source and binary forms, with or without      --
 --  modification, are permitted provided that the following conditions are  --
@@ -29,9 +29,9 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
---  A demonstration of a higher-level USART interface, using interrupts to
---  achieve non-blocking I/O (calls to Send and Receive return potentially
---  prior to I/O completion). The file declares the main procedure.
+--  A demonstration of a higher-level USART interface, using interrupts
+--  to achieve non-blocking I/O (calls to Start_Sending and Receive return
+--  potentially prior to I/O completion). The file declares the main procedure.
 
 with Last_Chance_Handler;  pragma Unreferenced (Last_Chance_Handler);
 --  The "last chance handler" is the user-defined routine that is called when
@@ -42,33 +42,41 @@ with Peripherals_Nonblocking;    use Peripherals_Nonblocking;
 with Serial_IO.Nonblocking;      use Serial_IO.Nonblocking;
 with Message_Buffers;            use Message_Buffers;
 
-use Serial_IO;
-
 procedure Demo_Serial_Port_Nonblocking is
 
    Incoming : aliased Message (Physical_Size => 1024);  -- arbitrary size
    Outgoing : aliased Message (Physical_Size => 1024);  -- arbitrary size
 
-   procedure Send (This : String);
+   procedure Start_Sending (This : String);
 
-   procedure Send (This : String) is
+   procedure Start_Sending (This : String) is
    begin
       Set (Outgoing, To => This);
-      Nonblocking.Send (COM, Outgoing'Unchecked_Access);
-      Await_Transmission_Complete (Outgoing);
-      --  Send can/will return before the entire message has been sent
-   end Send;
+      Send (COM, Outgoing'Unchecked_Access);
+      Outgoing.Await_Transmission_Complete;
+      --  We wait anyway, just to keep things simple for the display
+   end Start_Sending;
 
 begin
-   Initialize_Hardware (COM);
-   Configure (COM, Baud_Rate => 115_200);
+   Serial_IO.Initialize_Hardware (Peripheral);
+   Serial_IO.Configure (COM.Device, Baud_Rate => 115_200);
+   --  This baud rate selection is entirely arbitrary. Note that you may have
+   --  to alter the settings of your host serial port to match this baud rate,
+   --  or just change the above to match whatever the host serial port has set
+   --  already. An application such as TerraTerm or RealTerm is helpful.
 
    Incoming.Set_Terminator (To => ASCII.CR);
-   Send ("Enter text, terminated by CR.");
+   Start_Sending ("Enter text, terminated by CR.");
+   --  Note that you may have to alter the settings on your host serial port so
+   --  that the terminator char is not stripped off automatically by the host
+   --  driver, which may happen especially when CR is the terminator. You may
+   --  find that an application such as TerraTerm or RealTerm is helpful.
+
    loop
-      Nonblocking.Receive (COM, Incoming'Unchecked_Access);
-      Await_Reception_Complete (Incoming);
-      Send ("Received : " & Incoming.Content);
+      Receive (COM, Incoming'Unchecked_Access);
+      Incoming.Await_Reception_Complete;
+      --  We wait anyway, just to keep things simple for the display
+      Start_Sending ("Received : " & Incoming.Content);
    end loop;
 end Demo_Serial_Port_Nonblocking;
 

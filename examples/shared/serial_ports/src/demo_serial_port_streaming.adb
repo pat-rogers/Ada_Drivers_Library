@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
 --                                                                          --
---                    Copyright (C) 2016-2022, AdaCore                      --
+--                    Copyright (C) 2016-2025, AdaCore                      --
 --                                                                          --
 --  Redistribution and use in source and binary forms, with or without      --
 --  modification, are permitted provided that the following conditions are  --
@@ -44,59 +44,15 @@
 --  HOST COMPUTER SIDE:
 
 --  The incoming strings are intended to come from another program, presumably
---  running on the host computer, connected to the target board with a
---  serial cable that presents a serial port to the host operating system. The
---  "README.md" file associated with this project describes such a cable. A
---  sample host-side program is described below.
+--  running on the host computer, connected to the target board with a cable
+--  that presents a serial port to the host operating system. The "README.md"
+--  file associated with this project describes such a cable.
 
 --  Note that, because it uses the stream attributes String'Output and
 --  String'Input, which write and read the bounds as well as the characters,
---  you will need to use a program on the host that uses streams to send
---  and receive these String values. Here is a sample interactive program,
---  hardcoded arbitrarily to use COM3 on Windows. Note that the source code for
---  this program is included in the root of this project, not in the source dir
---  for the project because it is not intended to be run on the target board.
-
---  with GNAT.IO;                    use GNAT.IO;
---  with GNAT.Serial_Communications; use GNAT.Serial_Communications;
---
---  procedure Host is
---     COM  : aliased Serial_Port;
---     COM3 : constant Port_Name := Name (3);
---
---     Outgoing : String (1 .. 1024); -- arbitrary
---     Last     : Natural;
---  begin
---     COM.Open (COM3);
---     COM.Set (Rate => B115200, Block => False);
---
---     loop
---        Put ("> ");
---        Get_Line (Outgoing, Last);
---        exit when Last = Outgoing'First - 1;
---
---        Put_Line ("Sending: '" & Outgoing (1 .. Last) & "'");
---        String'Output (COM'Access, Outgoing (1 .. Last));
---
---        declare
---           Incoming : constant String := String'Input (COM'Access);
---        begin
---           Put_Line ("From board: " & Incoming);
---        end;
---     end loop;
---
---     COM.Close;
---  end Host;
-
---  You can change the COM port number, or even get it from the command line
---  as an argument, but it must match what the host OS sees from the USB-COM
---  cable.
-
---  When running it, enter a string at the prompt (">") or just hit carriage
---  return if you are ready to quit. If you enter a string, it will be sent to
---  the target board, along with the bounds. The program (in this file) running
---  on the target, echos it back so the host app will show that response from
---  the board.
+--  you will need to use a program on the host that uses streams to send and
+--  receive these String values. The source code and GNAT project file for such
+--  a program are in Ada_Drivers_Library/examples/shared/serial_ports/host_app/
 
 --  TARGET BOARD SIDE:
 
@@ -104,22 +60,26 @@
 --  board. It simply echos the incoming strings, forever.
 
 with Last_Chance_Handler;  pragma Unreferenced (Last_Chance_Handler);
-
+with Serial_IO;
 with Peripherals_Streaming; use Peripherals_Streaming;
-with Serial_IO.Streaming;   use Serial_IO.Streaming;
 
 procedure Demo_Serial_Port_Streaming is
 begin
-   Initialize_Hardware (COM);
-   Configure (COM, Baud_Rate => 115_200);
+   Serial_IO.Initialize_Hardware (Peripheral);
+   Serial_IO.Configure (COM.Device, Baud_Rate => 115_200);
+   --  This baud rate selection is entirely arbitrary. Note that you may
+   --  have to alter the settings of your host serial port to match this
+   --  baud rate, or just change the above to match whatever the host
+   --  serial port has set already. An application such as TerraTerm
+   --  or RealTerm is helpful.
 
    loop
       declare
-         --  get the incoming msg from the serial port
+         --  await the next msg from the serial port
          Incoming : constant String := String'Input (COM'Access);
       begin
          --  echo the received msg content
-         String'Output (COM'Access, "Received '" & Incoming & "'");
+         String'Output (COM'Access, "You sent '" & Incoming & "'");
       end;
    end loop;
 end Demo_Serial_Port_Streaming;

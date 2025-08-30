@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
 --                                                                          --
---                    Copyright (C) 2015-2022, AdaCore                      --
+--                    Copyright (C) 2015-2025, AdaCore                      --
 --                                                                          --
 --  Redistribution and use in source and binary forms, with or without      --
 --  modification, are permitted provided that the following conditions are  --
@@ -45,34 +45,35 @@ with Message_Buffers;  use Message_Buffers;
 package Serial_IO.Blocking is
    pragma Elaborate_Body;
 
-   type Serial_Port (Device : not null access Peripheral_Descriptor) is
+   type Serial_Port (Device : not null access USART) is
      tagged limited private;
 
-   procedure Initialize_Hardware (This : out Serial_Port);
-
-   procedure Configure
-     (This      : in out Serial_Port;
-      Baud_Rate : Baud_Rates;
-      Parity    : Parities     := No_Parity;
-      Data_Bits : Word_Lengths := Word_Length_8;
-      End_Bits  : Stop_Bits    := Stopbits_1;
-      Control   : Flow_Control := No_Flow_Control);
-
-   procedure Send (This : in out Serial_Port; Msg : not null access Message);
+   procedure Send
+     (This : in out Serial_Port;
+      Msg  : not null access Message);
    --  Sends Msg.Length characters of Msg via USART attached to This. Callers
    --  wait until all characters are sent.
 
-   procedure Receive (This : in out Serial_Port;  Msg : not null access Message) with
-     Post => Msg.Length <= Msg.Physical_Size and
-             (if Msg.Length > 0 then Msg.Content_At (Msg.Length) /= Msg.Terminator);
-   --  Callers wait until all characters are received.
+   procedure Receive
+     (This : in out Serial_Port;
+      Msg  : not null access Message)
+   with
+     Post => Msg.Length <= Msg.Physical_Size and then
+             --  At most Msg.Physical_Size characters are included
+             (if Msg.Length > 0 then
+                Msg.Content_At (Msg.Length) /= Msg.Terminator);
+             --  Reception completes if the terminator is received, and the
+             --  terminator is not included
+
+   --  Callers to the above wait until all characters are received.
 
 private
 
-   type Serial_Port (Device : access Peripheral_Descriptor) is tagged limited null record;
+   type Serial_Port (Device : access USART) is
+     tagged limited null record;
 
-   procedure Await_Send_Ready (This : USART) with Inline;
+   procedure Await_Send_Ready (This : access USART) with Inline;
 
-   procedure Await_Data_Available (This : USART) with Inline;
+   procedure Await_Data_Available (This : access USART) with Inline;
 
 end Serial_IO.Blocking;

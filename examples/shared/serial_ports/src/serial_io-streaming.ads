@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
 --                                                                          --
---                    Copyright (C) 2016-2022, AdaCore                      --
+--                    Copyright (C) 2016-2025, AdaCore                      --
 --                                                                          --
 --  Redistribution and use in source and binary forms, with or without      --
 --  modification, are permitted provided that the following conditions are  --
@@ -43,27 +43,17 @@ with Ada.Real_Time; use Ada.Real_Time;
 package Serial_IO.Streaming is
    pragma Elaborate_Body;
 
-   type Serial_Port (Device : not null access Peripheral_Descriptor) is
+   type Serial_Port (Device : not null access USART) is
      new Ada.Streams.Root_Stream_Type with private;
-
-   procedure Initialize_Hardware (This : out Serial_Port);
-
-   procedure Configure
-     (This      : in out Serial_Port;
-      Baud_Rate : Baud_Rates;
-      Parity    : Parities     := No_Parity;
-      Data_Bits : Word_Lengths := Word_Length_8;
-      End_Bits  : Stop_Bits    := Stopbits_1;
-      Control   : Flow_Control := No_Flow_Control);
 
    procedure Set_Read_Timeout
      (This : in out Serial_Port;
       Wait : Time_Span);
    --  Stream attributes that call Read (below) can either wait indefinitely or
    --  can be set to return any current values received after a given interval.
-   --  If the value Time_Span_Last is passed to Wait, the effect is essentially to wait
-   --  forever, i.e., blocking. That is also the effect if this routine is
-   --  never called.
+   --  If the value Time_Span_Last is passed to Wait, the effect is essentially
+   --  to wait forever, i.e., blocking. That is also the effect if this routine
+   --  is never called.
 
    overriding
    procedure Read
@@ -78,15 +68,15 @@ package Serial_IO.Streaming is
 
 private
 
-   type Serial_Port (Device : access Peripheral_Descriptor) is
+   type Serial_Port (Device : access USART) is
      new Ada.Streams.Root_Stream_Type with record
        Timeout : Time_Span := Time_Span_Last;
      end record;
 
-   procedure Await_Send_Ready (This : USART) with Inline;
+   procedure Await_Send_Ready (This : access USART) with Inline;
 
    procedure Await_Data_Available
-     (This      : USART;
+     (This      : access USART;
       Timeout   : Time_Span := Time_Span_Last;
       Timed_Out : out Boolean)
    with Inline;

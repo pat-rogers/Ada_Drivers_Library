@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
 --                                                                          --
---                    Copyright (C) 2015-2022, AdaCore                      --
+--                    Copyright (C) 2015-2025, AdaCore                      --
 --                                                                          --
 --  Redistribution and use in source and binary forms, with or without      --
 --  modification, are permitted provided that the following conditions are  --
@@ -50,27 +50,14 @@ package Serial_IO.Nonblocking is
    pragma Elaborate_Body;
 
    type Serial_Port
-     (Device       : not null access Peripheral_Descriptor;
+     (Device       : not null access USART;
       IRQ          : Interrupt_ID;
       IRQ_Priority : Interrupt_Priority)
    is limited private;
 
-   procedure Initialize_Hardware (This : in out Serial_Port);
-   --  A convenience wrapper for Serial_IO.Initialize_Hardware
-
-   procedure Configure
-     (This      : in out Serial_Port;
-      Baud_Rate : Baud_Rates;
-      Parity    : Parities     := No_Parity;
-      Data_Bits : Word_Lengths := Word_Length_8;
-      End_Bits  : Stop_Bits    := Stopbits_1;
-      Control   : Flow_Control := No_Flow_Control);
-   --  A convenience wrapper for Serial_IO.Configure
-
    procedure Send
      (This : in out Serial_Port;
-      Msg  : not null access Message)
-   with Inline;
+      Msg  : not null access Message);
    --  Start sending the content of Msg.all, returning potentially
    --  prior to the completion of the message transmission
 
@@ -79,24 +66,20 @@ package Serial_IO.Nonblocking is
       Msg  : not null access Message)
    with
       Post => Msg.Length <= Msg.Physical_Size and
-              (if Msg.Length > 0 then Msg.Content_At (Msg.Length) /= Msg.Terminator),
-              Inline;
+              (if Msg.Length > 0 then Msg.Content_At (Msg.Length) /= Msg.Terminator);
    --  Start receiving Msg.all content, ending when the specified
-   --  Msg.Terminator character is received (it is not stored), or
-   --  the physical capacity of Msg.all is reached
+   --  Msg.Terminator character is received or the physical capacity
+   --  of Msg.all is reached. The terminator character is not stored.
 
 private
 
    protected type Serial_Port
-     (Device       : not null access Peripheral_Descriptor;
+     (Device       : not null access USART;
       IRQ          : Interrupt_ID;
       IRQ_Priority : Interrupt_Priority)
-   --  with
-   --     Interrupt_Priority => IRQ_Priority
+   with
+      Interrupt_Priority => IRQ_Priority
    is
-
-      pragma Interrupt_Priority (IRQ_Priority);
-      --  use pragma as workaround for bug in CE_2021 frontend (V523-041)
 
       procedure Start_Sending (Msg : not null access Message);
 

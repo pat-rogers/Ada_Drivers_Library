@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
 --                                                                          --
---                  Copyright (C) 2015-2022, AdaCore                        --
+--                  Copyright (C) 2015-2025, AdaCore                        --
 --                                                                          --
 --  Redistribution and use in source and binary forms, with or without      --
 --  modification, are permitted provided that the following conditions are  --
@@ -29,35 +29,9 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
-with STM32.Device;  use STM32.Device;
-with HAL;           use HAL;
+with HAL;
 
 package body Serial_IO.Blocking is
-
-   -------------------------
-   -- Initialize_Hardware --
-   -------------------------
-
-   procedure Initialize_Hardware (This : out Serial_Port) is
-   begin
-      Serial_IO.Initialize_Hardware (This.Device);
-   end Initialize_Hardware;
-
-   ---------------
-   -- Configure --
-   ---------------
-
-   procedure Configure
-     (This      : in out Serial_Port;
-      Baud_Rate : Baud_Rates;
-      Parity    : Parities     := No_Parity;
-      Data_Bits : Word_Lengths := Word_Length_8;
-      End_Bits  : Stop_Bits    := Stopbits_1;
-      Control   : Flow_Control := No_Flow_Control)
-   is
-   begin
-      Serial_IO.Configure (This.Device, Baud_Rate, Parity, Data_Bits, End_Bits, Control);
-   end Configure;
 
    ----------
    -- Send --
@@ -66,10 +40,9 @@ package body Serial_IO.Blocking is
    procedure Send (This : in out Serial_Port;  Msg : not null access Message) is
    begin
       for Next in 1 .. Msg.Length loop
-         Await_Send_Ready (This.Device.Transceiver.all);
-         Transmit
-           (This.Device.Transceiver.all,
-            Character'Pos (Msg.Content_At (Next)));
+         Await_Send_Ready (This.Device);
+         This.Device.Transmit
+           (Character'Pos (Msg.Content_At (Next)));
       end loop;
    end Send;
 
@@ -79,12 +52,12 @@ package body Serial_IO.Blocking is
 
    procedure Receive (This : in out Serial_Port;  Msg : not null access Message) is
       Received_Char : Character;
-      Raw           : UInt9;
+      Raw           : HAL.UInt9;
    begin
       Msg.Clear;
       Receiving : for K in 1 .. Msg.Physical_Size loop
-         Await_Data_Available (This.Device.Transceiver.all);
-         Receive (This.Device.Transceiver.all, Raw);
+         Await_Data_Available (This.Device);
+         This.Device.Receive (Raw);
          Received_Char := Character'Val (Raw);
          exit Receiving when Received_Char = Msg.Terminator;
          Msg.Append (Received_Char);
@@ -95,10 +68,10 @@ package body Serial_IO.Blocking is
    -- Await_Send_Ready --
    ----------------------
 
-   procedure Await_Send_Ready (This : USART) is
+   procedure Await_Send_Ready (This : access USART) is
    begin
       loop
-         exit when Tx_Ready (This);
+         exit when This.Tx_Ready;
       end loop;
    end Await_Send_Ready;
 
@@ -106,10 +79,10 @@ package body Serial_IO.Blocking is
    -- Await_Data_Available --
    --------------------------
 
-   procedure Await_Data_Available (This : USART) is
+   procedure Await_Data_Available (This : access USART) is
    begin
       loop
-         exit when Rx_Ready (This);
+         exit when This.Rx_Ready;
       end loop;
    end Await_Data_Available;
 

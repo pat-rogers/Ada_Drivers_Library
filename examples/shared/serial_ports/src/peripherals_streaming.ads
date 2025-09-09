@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
 --                                                                          --
---                  Copyright (C) 2015-2022, AdaCore                        --
+--                   Copyright (C) 2015-2025, AdaCore                       --
 --                                                                          --
 --  Redistribution and use in source and binary forms, with or without      --
 --  modification, are permitted provided that the following conditions are  --
@@ -29,21 +29,19 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
-with STM32.Device;        use STM32.Device;
-
-with Serial_IO;           use Serial_IO;
-with Serial_IO.Streaming;
+with STM32.Device;
+with Serial_IO.Streaming; use Serial_IO;
 
 package Peripherals_Streaming is
 
    --  the USART selection is arbitrary but the AF number and the pins must
    --  be those required by that USART
-   Peripheral : aliased Serial_IO.Peripheral_Descriptor :=
-                  (Transceiver    => USART_1'Access,
-                   Transceiver_AF => GPIO_AF_USART1_7,
-                   Tx_Pin         => PB6,
-                   Rx_Pin         => PB7);
+   Peripheral : constant Serial_IO.Peripheral_Descriptor :=
+                  (Transceiver    => STM32.Device.USART_1'Access,
+                   Transceiver_AF => STM32.Device.GPIO_AF_USART1_7,
+                   Tx_Pin         => STM32.Device.PB6,
+                   Rx_Pin         => STM32.Device.PB7);
 
-   COM : aliased Streaming.Serial_Port (Peripheral'Access);
+   COM : aliased Streaming.Serial_Port (Peripheral.Transceiver);
 
 end Peripherals_Streaming;

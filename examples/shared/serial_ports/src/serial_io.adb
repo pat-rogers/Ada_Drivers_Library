@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
 --                                                                          --
---                     Copyright (C) 2015-2022, AdaCore                     --
+--                     Copyright (C) 2015-2025, AdaCore                     --
 --                                                                          --
 --  Redistribution and use in source and binary forms, with or without      --
 --  modification, are permitted provided that the following conditions are  --
@@ -37,7 +37,7 @@ package body Serial_IO is
    -- Initialize_Hardware --
    -------------------------
 
-   procedure Initialize_Hardware (Device : access Peripheral_Descriptor) is
+   procedure Initialize_Hardware (Device : Peripheral_Descriptor) is
       Configuration : GPIO_Port_Configuration;
       Device_Pins   : constant GPIO_Points := Device.Rx_Pin & Device.Tx_Pin;
    begin
@@ -58,24 +58,27 @@ package body Serial_IO is
    ---------------
 
    procedure Configure
-     (Device    : access Peripheral_Descriptor;
+     (Device    : access USART;
       Baud_Rate : Baud_Rates;
       Parity    : Parities     := No_Parity;
       Data_Bits : Word_Lengths := Word_Length_8;
       End_Bits  : Stop_Bits    := Stopbits_1;
       Control   : Flow_Control := No_Flow_Control)
    is
+      --  this is a convenience procedure, but the convenience includes
+      --  ensuring that the device is disabled and enabled at the appropriate
+      --  points
    begin
-      Disable (Device.Transceiver.all);
+      Device.Disable;
 
-      Set_Baud_Rate    (Device.Transceiver.all, Baud_Rate);
-      Set_Mode         (Device.Transceiver.all, Tx_Rx_Mode);
-      Set_Stop_Bits    (Device.Transceiver.all, End_Bits);
-      Set_Word_Length  (Device.Transceiver.all, Data_Bits);
-      Set_Parity       (Device.Transceiver.all, Parity);
-      Set_Flow_Control (Device.Transceiver.all, Control);
+      Device.Set_Baud_Rate    (Baud_Rate);
+      Device.Set_Mode         (Tx_Rx_Mode);
+      Device.Set_Stop_Bits    (End_Bits);
+      Device.Set_Word_Length  (Data_Bits);
+      Device.Set_Parity       (Parity);
+      Device.Set_Flow_Control (Control);
 
-      Enable (Device.Transceiver.all);
+      Device.Enable;
    end Configure;
 
 end Serial_IO;

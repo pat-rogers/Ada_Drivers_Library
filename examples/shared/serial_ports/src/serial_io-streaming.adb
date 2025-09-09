@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
 --                                                                          --
---                    Copyright (C) 2016-2022, AdaCore                      --
+--                    Copyright (C) 2016-2025, AdaCore                      --
 --                                                                          --
 --  Redistribution and use in source and binary forms, with or without      --
 --  modification, are permitted provided that the following conditions are  --
@@ -29,46 +29,9 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
-with STM32.Device;  use STM32.Device;
-with HAL;           use HAL;
+with HAL;
 
 package body Serial_IO.Streaming is
-
-   -------------------------
-   -- Initialize_Hardware --
-   -------------------------
-
-   procedure Initialize_Hardware (This : out Serial_Port) is
-   begin
-      Serial_IO.Initialize_Hardware (This.Device);
-   end Initialize_Hardware;
-
-   ---------------
-   -- Configure --
-   ---------------
-
-   procedure Configure
-     (This      : in out Serial_Port;
-      Baud_Rate : Baud_Rates;
-      Parity    : Parities     := No_Parity;
-      Data_Bits : Word_Lengths := Word_Length_8;
-      End_Bits  : Stop_Bits    := Stopbits_1;
-      Control   : Flow_Control := No_Flow_Control)
-   is
-   begin
-      Serial_IO.Configure (This.Device, Baud_Rate, Parity, Data_Bits, End_Bits, Control);
-   end Configure;
-
-   ----------------------
-   -- Await_Send_Ready --
-   ----------------------
-
-   procedure Await_Send_Ready (This : USART) is
-   begin
-      loop
-         exit when Tx_Ready (This);
-      end loop;
-   end Await_Send_Ready;
 
    ----------------------
    -- Set_Read_Timeout --
@@ -82,12 +45,23 @@ package body Serial_IO.Streaming is
       This.Timeout := Wait;
    end Set_Read_Timeout;
 
+   ----------------------
+   -- Await_Send_Ready --
+   ----------------------
+
+   procedure Await_Send_Ready (This : access USART) is
+   begin
+      loop
+         exit when This.Tx_Ready;
+      end loop;
+   end Await_Send_Ready;
+
    --------------------------
    -- Await_Data_Available --
    --------------------------
 
    procedure Await_Data_Available
-     (This      : USART;
+     (This      : access USART;
       Timeout   : Time_Span := Time_Span_Last;
       Timed_Out : out Boolean)
    is
@@ -95,7 +69,7 @@ package body Serial_IO.Streaming is
    begin
       Timed_Out := True;
       while Clock < Deadline loop
-         if Rx_Ready (This) then
+         if This.Rx_Ready then
             Timed_Out := False;
             exit;
          end if;
@@ -113,8 +87,8 @@ package body Serial_IO.Streaming is
    is
    begin
       if First = Stream_Element_Offset'First and then Count = 0 then
-         --  we need to return First - 1, but cannot
-         raise Constraint_Error;  --  per RM
+         --  although we intend to return First - 1, we cannot
+         raise Constraint_Error;  -- per AI95-227
       else
          return First + Stream_Element_Offset (Count) - 1;
       end if;
@@ -130,14 +104,14 @@ package body Serial_IO.Streaming is
       Buffer : out Ada.Streams.Stream_Element_Array;
       Last   : out Ada.Streams.Stream_Element_Offset)
    is
-      Raw       : UInt9;
+      Raw       : HAL.UInt9;
       Timed_Out : Boolean;
       Count     : Long_Integer := 0;
    begin
       Receiving : for K in Buffer'Range loop
-         Await_Data_Available (This.Device.Transceiver.all, This.Timeout, Timed_Out);
+         Await_Data_Available (This.Device, This.Timeout, Timed_Out);
          exit Receiving when Timed_Out;
-         Receive (This.Device.Transceiver.all, Raw);
+         This.Device.Receive (Raw);
          Buffer (K) := Stream_Element (Raw);
          Count := Count + 1;
       end loop Receiving;
@@ -155,8 +129,8 @@ package body Serial_IO.Streaming is
    is
    begin
       for Next of Buffer loop
-         Await_Send_Ready (This.Device.Transceiver.all);
-         Transmit (This.Device.Transceiver.all, Stream_Element'Pos (Next));
+         Await_Send_Ready (This.Device);
+         This.Device.Transmit (HAL.UInt9 (Next));
       end loop;
    end Write;
 
